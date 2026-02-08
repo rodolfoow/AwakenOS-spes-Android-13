@@ -11,20 +11,23 @@ jobs:
 
       - name: Install Crave CLI
         run: |
-          # Eng so'nggi crave versiyasini yuklab olish
+          # Crave CLI-ni o'rnatish
           curl -sL https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash
           chmod +x crave
           sudo mv crave /usr/local/bin/
 
       - name: Set up Crave Config
         run: |
-          # Konfiguratsiya faylini yaratish
+          # Konfiguratsiya faylini yaratish (Eski loglardagi kabi)
           mkdir -p ~/.crave
           echo "username: ${{ secrets.CRAVE_USERNAME }}" > ~/.crave/crave.conf
           echo "authToken: ${{ secrets.CRAVE_TOKEN }}" >> ~/.crave/crave.conf
+          
+          # Bo'sh joylar yo'qligini tekshirish
+          sed -i 's/ //g' ~/.crave/crave.conf 2>/dev/null || true
 
       - name: Start Build on Crave
         run: |
-          # build.sh skriptini ishga tushirish
+          # Build-ni boshlash
           crave run --no-patch -- "bash build.sh"
           
