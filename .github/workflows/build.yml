@@ -1,16 +1,14 @@
-name: AwakenOS Build
-on:
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Build on Crave
+ name: Build on Crave
         run: |
-          curl -s https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash $(pwd)
+          # Crave-ni yuklab olish
+          curl -s https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash
+          
+          # Ishga tushirish huquqini berish
+          chmod +x ./crave
+          
+          # Build-ni boshlash
           ./crave run --no-patch -- "bash build.sh"
+        env:
+          CRAVE_USERNAME: ${{ secrets.CRAVE_USERNAME }}
+          CRAVE_TOKEN: ${{ secrets.CRAVE_TOKEN }}
           
