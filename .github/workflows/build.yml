@@ -8,11 +8,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
-      - name: Build on Crave
+        
+         - name: Build on Crave
         run: |
-          # Crave skriptini yuklash va ishga tushirish
           curl -s https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash
+          chmod +x crave
+          # Loyiha nomini va manzilini aniq ko'rsatib ishga tushiramiz
+          ./crave run --no-patch -- "bash build.sh"
           
           # Fayl borligini va ishga tushishini tekshirish
           ls -l crave
