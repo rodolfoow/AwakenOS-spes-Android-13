@@ -1,4 +1,4 @@
- name: Build on Crave
+-       name: Build on Crave
         run: |
           # Crave-ni yuklab olish
           curl -s https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash
