@@ -1,120 +1,127 @@
-name: Build AwakenOS for Redmi Note 11
+name: Build AwakenOS - Fixed API
 
 on:
-  workflow_dispatch:  # Faqat qo'lda ishga tushadi
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Test Connection
+    - name: Test All API Endpoints
       run: |
-        echo "=== Testing Connection to Crave.io ==="
-        echo "Server: ${{ secrets.CRAVE_SERVER }}"
-        echo "Username: ${{ secrets.CRAVE_USERNAME }}"
+        echo "🧪 Testing Crave.io API endpoints..."
         
-        # Test if server is reachable
-        curl -I "https://${{ secrets.CRAVE_SERVER }}" || echo "Testing base URL..."
+        SERVER="${{ secrets.CRAVE_SERVER }}"
+        TOKEN="${{ secrets.CRAVE_API_TOKEN }}"
         
-    - name: Start ROM Build
+        # Test different API endpoints
+        ENDPOINTS=(
+          "/api/v1/build"
+          "/api/build"
+          "/build"
+          "/v1/build"
+          "/api/v1/builds"
+          "/build/create"
+        )
+        
+        for endpoint in "${ENDPOINTS[@]}"; do
+          echo -n "Testing https://$SERVER$endpoint ... "
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: $TOKEN" "https://$SERVER$endpoint")
+          
+          if [ "$STATUS" = "200" ] || [ "$STATUS" = "201" ] || [ "$STATUS" = "400" ]; then
+            echo "✅ Found! (Status: $STATUS)"
+            echo "::set-output name=api_endpoint::$endpoint"
+            break
+          else
+            echo "❌ Failed (Status: $STATUS)"
+          fi
+        done
+        
+    - name: Start Build with Correct Endpoint
+      id: build_step
       env:
         SERVER: ${{ secrets.CRAVE_SERVER }}
         TOKEN: ${{ secrets.CRAVE_API_TOKEN }}
-        USERNAME: ${{ secrets.CRAVE_USERNAME }}
       run: |
-        echo "🚀 Starting AwakenOS build for Redmi Note 11 (spes)..."
+        echo "🔍 Discovering correct API endpoint..."
         
-        # Check if all secrets are set
-        if [ -z "$SERVER" ]; then
-          echo "❌ ERROR: CRAVE_SERVER secret not set!"
-          exit 1
-        fi
-        
-        if [ -z "$TOKEN" ]; then
-          echo "❌ ERROR: CRAVE_API_TOKEN secret not set!"
-          exit 1
-        fi
-        
-        echo "✅ All secrets are set correctly!"
-        
-        # Create build request
-        BUILD_JSON=$(cat <<EOF
-        {
-          "device": "spes",
-          "codename": "spes",
-          "rom": "awakenos",
-          "version": "13.0",
-          "source": {
-            "manifest": "https://github.com/Project-Awaken/android_manifest.git",
-            "branch": "13.0",
-            "device": "https://github.com/sayann70/device_xiaomi_spes.git",
-            "device_branch": "13.0",
-            "vendor": "https://github.com/sayann70/vendor_xiaomi_spes.git",
-            "vendor_branch": "13.0",
-            "kernel": "https://github.com/sayann70/android_kernel_xiaomi_spes.git",
-            "kernel_branch": "13.0-triton-void"
-          },
-          "parameters": {
-            "clean": true,
-            "type": "userdebug",
-            "jobs": 4
-          }
+        # Try to find the right endpoint
+        TRY_ENDPOINTS() {
+          local token="$1"
+          local server="$2"
+          
+          # Try common endpoints
+          local endpoints=(
+            "/api/v1/builds"
+            "/api/builds"
+            "/builds"
+            "/api/v1/build/create"
+            "/api/build/create"
+          )
+          
+          for endpoint in "${endpoints[@]}"; do
+            echo "Trying: https://$server$endpoint"
+            
+            RESPONSE=$(curl -s -X GET \
+              -H "Authorization: $token" \
+              -H "Content-Type: application/json" \
+              "https://$server$endpoint")
+            
+            if echo "$RESPONSE" | grep -q "builds\|id\|name"; then
+              echo "✅ Valid endpoint found: $endpoint"
+              echo "$endpoint"
+              return 0
+            fi
+          done
+          
+          return 1
         }
-        EOF
-        )
         
-        echo "📦 Build configuration:"
-        echo "$BUILD_JSON" | jq '.' 2>/dev/null || echo "$BUILD_JSON"
+        ENDPOINT=$(TRY_ENDPOINTS "$TOKEN" "$SERVER")
         
-        echo ""
-        echo "🔗 Sending request to: https://$SERVER/api/v1/build"
-        
-        # Send build request
-        RESPONSE=$(curl -s -X POST "https://$SERVER/api/v1/build" \
-          -H "Content-Type: application/json" \
-          -H "Authorization: $TOKEN" \
-          -H "User-Agent: Crave" \
-          -d "$BUILD_JSON")
-        
-        echo "📨 Response from server:"
-        echo "$RESPONSE"
-        
-        # Try to get build ID
-        BUILD_ID=$(echo "$RESPONSE" | grep -o '"build_id":"[^"]*"' | cut -d'"' -f4)
-        BUILD_ID_NUM=$(echo "$RESPONSE" | grep -o '"id":[0-9]*' | cut -d':' -f2)
-        
-        if [ -n "$BUILD_ID" ]; then
-          echo "✅ Build started successfully!"
-          echo "📝 Build ID: $BUILD_ID"
-        elif [ -n "$BUILD_ID_NUM" ]; then
-          echo "✅ Build started successfully!"
-          echo "📝 Build ID: $BUILD_ID_NUM"
-        else
-          echo "⚠️ Could not parse build ID from response"
-          echo "Check Crave.io dashboard manually"
+        if [ -z "$ENDPOINT" ]; then
+          echo "❌ Could not find valid API endpoint"
+          echo "Trying POST request to known endpoints..."
+          
+          # Try POST to common endpoints
+          BUILD_DATA='{"device":"spes","rom":"test"}'
+          
+          for endpoint in "/api/v1/builds" "/api/builds" "/builds"; do
+            echo "POST to: https://$SERVER$endpoint"
+            curl -v -X POST \
+              -H "Authorization: $TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$BUILD_DATA" \
+              "https://$SERVER$endpoint" && break
+          done
+          
+          exit 1
         fi
         
-    - name: Show Dashboard Links
-      run: |
-        echo ""
-        echo "========================================"
-        echo "📱 MONITOR YOUR BUILD:"
-        echo ""
-        echo "1️⃣ Crave.io Dashboard:"
-        echo "   https://${{ secrets.CRAVE_SERVER }}/dashboard"
-        echo ""
-        echo "2️⃣ Builds List:"
-        echo "   https://${{ secrets.CRAVE_SERVER }}/builds"
-        echo ""
-        echo "3️⃣ Direct Builds Page:"
-        echo "   https://foss.crave.io/builds"
-        echo ""
-        echo "💡 TIP: Login with: ${{ secrets.CRAVE_USERNAME }}"
-        echo "========================================"
+        echo "✅ Using endpoint: $ENDPOINT"
         
-    - name: Send Notification (Optional)
-      if: success()
-      run: |
-        echo "✅ Build request submitted successfully!"
-        echo "Check your email or Crave.io dashboard for updates."
+        # Now send actual build request
+        BUILD_JSON='{
+          "device": "spes",
+          "rom": "awakenos",
+          "android_version": "13",
+          "sources": {
+            "manifest": "https://github.com/Project-Awaken/android_manifest.git",
+            "manifest_branch": "13.0",
+            "device_tree": "https://github.com/sayann70/device_xiaomi_spes.git",
+            "device_branch": "13.0",
+            "vendor_tree": "https://github.com/sayann70/vendor_xiaomi_spes.git",
+            "vendor_branch": "13.0",
+            "kernel_source": "https://github.com/sayann70/android_kernel_xiaomi_spes.git",
+            "kernel_branch": "13.0-triton-void"
+          }
+        }'
+        
+        echo "📤 Sending build request..."
+        curl -v -X POST \
+          -H "Authorization: $TOKEN" \
+          -H "Content-Type: application/json" \
+          -H "User-Agent: Crave" \
+          -d "$BUILD_JSON" \
+          "https://$SERVER$ENDPOINT"
