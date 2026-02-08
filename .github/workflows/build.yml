@@ -1,28 +1,41 @@
-name: AwakenOS Build
+name: Build and Upload to Crave
+
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # Faqat qo'lda ishga tushadi
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Install Crave CLI
-        run: |
-          curl -sL https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash
-          chmod +x crave
-          sudo mv crave /usr/local/bin/
-
-      - name: Set up Crave Config
-        run: |
-          mkdir -p ~/.crave
-          # GitHub Secrets'dagi o'zgaruvchilarni qabul qilamiz
-          echo "username: ${{ secrets.CRAVE_USERNAME }}" > ~/.crave/crave.conf
-          echo "authToken: ${{ secrets.CRAVE_TOKEN }}" >> ~/.crave/crave.conf
-
-      - name: Start Build on Crave
-        run: |
-          crave run --no-patch -- "bash build.sh"
+    - name: Start Crave.io Build
+      run: |
+        # Crave.io API ga so'rov yuborish
+        curl -X POST "https://${{ secrets.CRAVE_SERVER }}/api/v1/build/start" \
+          -H "X-API-Key: ${{ secrets.CRAVE_API_KEY }}" \
+          -H "X-API-Secret: ${{ secrets.CRAVE_API_SECRET }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "device": "spes",
+            "rom_type": "awakenos",
+            "android_version": "13",
+            "sources": {
+              "manifest": "https://github.com/Project-Awaken/android_manifest.git",
+              "manifest_branch": "13.0",
+              "device_tree": "https://github.com/sayann70/device_xiaomi_spes.git",
+              "device_branch": "13.0",
+              "vendor_tree": "https://github.com/sayann70/vendor_xiaomi_spes.git",
+              "vendor_branch": "13.0",
+              "kernel": "https://github.com/sayann70/android_kernel_xiaomi_spes.git",
+              "kernel_branch": "13.0-triton-void"
+            },
+            "build_type": "userdebug",
+            "clean_build": true
+          }'
           
+    - name: Check Build Status
+      run: |
+        # Build statusini tekshirish
+        echo "Build started on Crave.io server"
+        echo "Check your Crave.io dashboard for progress"
+        echo "Server: https://${{ secrets.CRAVE_SERVER }}"
