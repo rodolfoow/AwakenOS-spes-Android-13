@@ -6,20 +6,25 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Build on Crave
-        env:
-          CRAVE_USERNAME: ${{ secrets.CRAVE_USERNAME }}
-          CRAVE_TOKEN: ${{ secrets.CRAVE_TOKEN }}
+      - name: Install Crave CLI
         run: |
-          # 1. Crave skriptini yuklash
-          curl -s https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash
-          
-          # 2. Ishga tushirish huquqini berish
-          chmod +x ./crave
-          
-          # 3. Crave serveriga ulanish va buildni boshlash
-          ./crave run --no-patch -- "bash build.sh"
+          # Eng so'nggi crave versiyasini yuklab olish
+          curl -sL https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash
+          chmod +x crave
+          sudo mv crave /usr/local/bin/
+
+      - name: Set up Crave Config
+        run: |
+          # Konfiguratsiya faylini yaratish
+          mkdir -p ~/.crave
+          echo "username: ${{ secrets.CRAVE_USERNAME }}" > ~/.crave/crave.conf
+          echo "authToken: ${{ secrets.CRAVE_TOKEN }}" >> ~/.crave/crave.conf
+
+      - name: Start Build on Crave
+        run: |
+          # build.sh skriptini ishga tushirish
+          crave run --no-patch -- "bash build.sh"
           
