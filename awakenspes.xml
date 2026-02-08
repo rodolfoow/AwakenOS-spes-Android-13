@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <project name="sayann70/device_xiaomi_spes" path="device/xiaomi/spes" remote="github" revision="13" />
+  <project name="sayann70/vendor_xiaomi_spes" path="vendor/xiaomi/spes" remote="github" revision="13" />
+  <project name="sayann70/kernel_xiaomi_spes" path="kernel/xiaomi/spes" remote="github" revision="13" />
+</manifest>
