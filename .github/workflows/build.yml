@@ -18,12 +18,11 @@ jobs:
       - name: Set up Crave Config
         run: |
           mkdir -p ~/.crave
-          # Diqqat: Bu yerda format juda muhim
+          # GitHub Secrets'dagi o'zgaruvchilarni qabul qilamiz
           echo "username: ${{ secrets.CRAVE_USERNAME }}" > ~/.crave/crave.conf
           echo "authToken: ${{ secrets.CRAVE_TOKEN }}" >> ~/.crave/crave.conf
 
       - name: Start Build on Crave
         run: |
-          # Avvalgi logingizda ishlatilgan buyruq
           crave run --no-patch -- "bash build.sh"
           
