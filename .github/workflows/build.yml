@@ -1,127 +1,98 @@
-name: Build AwakenOS - Fixed API
+name: Trigger Manual Build
 
 on:
   workflow_dispatch:
 
 jobs:
-  build:
+  notify:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Test All API Endpoints
+    - name: Create Build Instructions
       run: |
-        echo "🧪 Testing Crave.io API endpoints..."
+        echo "# 🚀 Build AwakenOS for Redmi Note 11"
+        echo ""
+        echo "## 📋 Build Configuration"
+        echo ""
+        echo "### Device Info:"
+        echo "- **Device**: Redmi Note 11"
+        echo "- **Codename**: spes"
+        echo "- **Manufacturer**: Xiaomi"
+        echo ""
+        echo "### ROM Info:"
+        echo "- **ROM Name**: AwakenOS"
+        echo "- **Android Version**: 13.0"
+        echo "- **Build Type**: userdebug"
+        echo ""
+        echo "### Sources:"
+        echo "1. **Manifest**: https://github.com/Project-Awaken/android_manifest.git"
+        echo "   - Branch: 13.0"
+        echo ""
+        echo "2. **Device Tree**: https://github.com/sayann70/device_xiaomi_spes.git"
+        echo "   - Branch: 13.0"
+        echo ""
+        echo "3. **Vendor Tree**: https://github.com/sayann70/vendor_xiaomi_spes.git"
+        echo "   - Branch: 13.0"
+        echo ""
+        echo "4. **Kernel**: https://github.com/sayann70/android_kernel_xiaomi_spes.git"
+        echo "   - Branch: 13.0-triton-void"
+        echo ""
+        echo "## 🛠 Build Parameters:"
+        echo "- Clean Build: Yes"
+        echo "- Use CCache: Yes"
+        echo "- Jobs: 4"
+        echo ""
+        echo "## 📱 Steps to Build:"
+        echo ""
+        echo "1. **Go to Crave.io Dashboard**:"
+        echo "   👉 https://foss.crave.io"
+        echo ""
+        echo "2. **Login with**:"
+        echo "   📧 Email: rodolfovdon@gmail.com"
+        echo ""
+        echo "3. **Click 'New Build' or 'Submit Build'**"
+        echo ""
+        echo "4. **Fill the form**:"
+        echo "   - Device: spes"
+        echo "   - ROM: awakenos"
+        echo "   - Android: 13"
+        echo "   - Paste the source URLs above"
+        echo ""
+        echo "5. **Click 'Start Build'**"
+        echo ""
+        echo "6. **Monitor progress** in Builds section"
+        echo ""
+        echo "## ⏰ Build Time:"
+        echo "- Estimated: 1-2 hours"
+        echo "- You'll receive notification when done"
         
-        SERVER="${{ secrets.CRAVE_SERVER }}"
-        TOKEN="${{ secrets.CRAVE_API_TOKEN }}"
-        
-        # Test different API endpoints
-        ENDPOINTS=(
-          "/api/v1/build"
-          "/api/build"
-          "/build"
-          "/v1/build"
-          "/api/v1/builds"
-          "/build/create"
-        )
-        
-        for endpoint in "${ENDPOINTS[@]}"; do
-          echo -n "Testing https://$SERVER$endpoint ... "
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: $TOKEN" "https://$SERVER$endpoint")
-          
-          if [ "$STATUS" = "200" ] || [ "$STATUS" = "201" ] || [ "$STATUS" = "400" ]; then
-            echo "✅ Found! (Status: $STATUS)"
-            echo "::set-output name=api_endpoint::$endpoint"
-            break
-          else
-            echo "❌ Failed (Status: $STATUS)"
-          fi
-        done
-        
-    - name: Start Build with Correct Endpoint
-      id: build_step
-      env:
-        SERVER: ${{ secrets.CRAVE_SERVER }}
-        TOKEN: ${{ secrets.CRAVE_API_TOKEN }}
+    - name: Save Instructions to File
       run: |
-        echo "🔍 Discovering correct API endpoint..."
+        # Save instructions to README
+        cat > BUILD_INSTRUCTIONS.md << 'EOF'
+        # Build Instructions
         
-        # Try to find the right endpoint
-        TRY_ENDPOINTS() {
-          local token="$1"
-          local server="$2"
-          
-          # Try common endpoints
-          local endpoints=(
-            "/api/v1/builds"
-            "/api/builds"
-            "/builds"
-            "/api/v1/build/create"
-            "/api/build/create"
-          )
-          
-          for endpoint in "${endpoints[@]}"; do
-            echo "Trying: https://$server$endpoint"
-            
-            RESPONSE=$(curl -s -X GET \
-              -H "Authorization: $token" \
-              -H "Content-Type: application/json" \
-              "https://$server$endpoint")
-            
-            if echo "$RESPONSE" | grep -q "builds\|id\|name"; then
-              echo "✅ Valid endpoint found: $endpoint"
-              echo "$endpoint"
-              return 0
-            fi
-          done
-          
-          return 1
-        }
+        Time: $(date)
         
-        ENDPOINT=$(TRY_ENDPOINTS "$TOKEN" "$SERVER")
+        ## Quick Links:
+        - [Crave.io Dashboard](https://foss.crave.io)
+        - [Device Tree](https://github.com/sayann70/device_xiaomi_spes)
+        - [Vendor Tree](https://github.com/sayann70/vendor_xiaomi_spes)
+        - [Kernel Source](https://github.com/sayann70/android_kernel_xiaomi_spes)
+        - [AwakenOS Manifest](https://github.com/Project-Awaken/android_manifest)
         
-        if [ -z "$ENDPOINT" ]; then
-          echo "❌ Could not find valid API endpoint"
-          echo "Trying POST request to known endpoints..."
-          
-          # Try POST to common endpoints
-          BUILD_DATA='{"device":"spes","rom":"test"}'
-          
-          for endpoint in "/api/v1/builds" "/api/builds" "/builds"; do
-            echo "POST to: https://$SERVER$endpoint"
-            curl -v -X POST \
-              -H "Authorization: $TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "$BUILD_DATA" \
-              "https://$SERVER$endpoint" && break
-          done
-          
-          exit 1
-        fi
+        ## Build Command (for reference):
+        ```
+        repo init -u https://github.com/Project-Awaken/android_manifest.git -b 13.0
+        repo sync -c -j4
+        source build/envsetup.sh
+        lunch awaken_spes-userdebug
+        mka bacon -j4
+        ```
+        EOF
         
-        echo "✅ Using endpoint: $ENDPOINT"
-        
-        # Now send actual build request
-        BUILD_JSON='{
-          "device": "spes",
-          "rom": "awakenos",
-          "android_version": "13",
-          "sources": {
-            "manifest": "https://github.com/Project-Awaken/android_manifest.git",
-            "manifest_branch": "13.0",
-            "device_tree": "https://github.com/sayann70/device_xiaomi_spes.git",
-            "device_branch": "13.0",
-            "vendor_tree": "https://github.com/sayann70/vendor_xiaomi_spes.git",
-            "vendor_branch": "13.0",
-            "kernel_source": "https://github.com/sayann70/android_kernel_xiaomi_spes.git",
-            "kernel_branch": "13.0-triton-void"
-          }
-        }'
-        
-        echo "📤 Sending build request..."
-        curl -v -X POST \
-          -H "Authorization: $TOKEN" \
-          -H "Content-Type: application/json" \
-          -H "User-Agent: Crave" \
-          -d "$BUILD_JSON" \
-          "https://$SERVER$ENDPOINT"
+    - name: Upload Instructions
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-instructions
+        path: BUILD_INSTRUCTIONS.md
